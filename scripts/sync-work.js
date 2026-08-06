@@ -48,10 +48,29 @@ function getFileHash(filePath) {
 }
 
 /**
- * Upload a file to R2
+ * Upload a file to R2 with change detection
  */
-async function uploadFile(key, filePath, contentType) {
+async function uploadFile(key, filePath, contentType, forceUpload = false) {
   const fileContent = fs.readFileSync(filePath);
+  const fileHash = crypto.createHash('md5').update(fileContent).digest('hex');
+  
+  // Check if file already exists and hasn't changed by listing and comparing ETags
+  if (!forceUpload) {
+    try {
+      const r2Objects = await listR2Objects();
+      const existingObject = r2Objects.find(obj => obj.Key === key);
+      if (existingObject && existingObject.ETag) {
+        // ETag is often quoted, remove quotes for comparison
+        const remoteEtag = existingObject.ETag.replace(/"/g, '');
+        if (remoteEtag === fileHash) {
+          console.log(`⊘ Skipped (unchanged): ${key}`);
+          return { uploaded: false, hash: fileHash };
+        }
+      }
+    } catch (error) {
+      console.error(`✗ Failed to check existing file ${key}:`, error.message);
+    }
+  }
   
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -63,10 +82,10 @@ async function uploadFile(key, filePath, contentType) {
   try {
     await s3Client.send(command);
     console.log(`✓ Uploaded: ${key}`);
-    return true;
+    return { uploaded: true, hash: fileHash };
   } catch (error) {
     console.error(`✗ Failed to upload ${key}:`, error.message);
-    return false;
+    return { uploaded: false, hash: fileHash };
   }
 }
 
@@ -205,10 +224,15 @@ function hasVideoFile(dirPath) {
  */
 function loadProjectMetadata(projectPath, projectName) {
   const metadataPath = path.join(projectPath, METADATA_FILE);
+  const cleanName = projectName.split('/').pop();
+  const titleCaseName = toTitleCase(cleanName);
   
   if (fs.existsSync(metadataPath)) {
     try {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      // Override title and description to match folder name for consistency
+      metadata.title = titleCaseName;
+      metadata.description = `Video project: ${titleCaseName}`;
       return metadata;
     } catch (error) {
       console.error(`  ✗ Failed to parse metadata for ${projectName}:`, error.message);
@@ -216,13 +240,12 @@ function loadProjectMetadata(projectPath, projectName) {
   }
   
   // Generate default metadata if not exists
-  const cleanName = projectName.split('/').pop(); // Get the last part of the path
   return {
-    title: toTitleCase(cleanName),
+    title: titleCaseName,
     tag: 'Video',
     year: new Date().getFullYear().toString(),
     span: 'lg:col-span-6',
-    description: `Video project: ${toTitleCase(cleanName)}`,
+    description: `Video project: ${titleCaseName}`,
   };
 }
 
@@ -253,9 +276,9 @@ async function processProject(project) {
   // Upload video file
   const videoKey = `${project.name}/${videoFile}`;
   const videoPath = path.join(project.path, videoFile);
-  const videoUploadSuccess = await uploadFile(videoKey, videoPath, getContentType(videoFile));
+  const videoUploadResult = await uploadFile(videoKey, videoPath, getContentType(videoFile));
   
-  if (!videoUploadSuccess) {
+  if (!videoUploadResult.uploaded && !videoUploadResult.hash) {
     return null;
   }
   
@@ -266,9 +289,9 @@ async function processProject(project) {
   if (thumbnailFile) {
     const thumbnailKey = `${project.name}/${thumbnailFile}`;
     const thumbnailPath = path.join(project.path, thumbnailFile);
-    const uploadSuccess = await uploadFile(thumbnailKey, thumbnailPath, getContentType(thumbnailFile));
+    const uploadResult = await uploadFile(thumbnailKey, thumbnailPath, getContentType(thumbnailFile));
     
-    if (uploadSuccess) {
+    if (uploadResult.uploaded || uploadResult.hash) {
       thumbnailUrl = `https://videoassets.smaffan.com/${thumbnailKey}`;
     }
   } else {
@@ -295,7 +318,12 @@ async function processProject(project) {
 /**
  * Build shared metadata from both work and video projects
  */
-async function buildSharedMetadata(workItems) {
+async function buildSharedMetadata(workItems, localProjects) {
+  console.log('\n=== Updating metadata ===');
+  
+  // Get current local project paths for validation
+  const localProjectPaths = new Set(localProjects.map(p => p.name));
+  
   // Fetch existing metadata to preserve video projects
   let existingMetadata = [];
   try {
@@ -307,15 +335,45 @@ async function buildSharedMetadata(workItems) {
     console.log('⚠️  Could not fetch existing metadata, starting fresh');
   }
   
-  // Create a map of existing items by title to avoid duplicates
+  // Create a map of existing items by project path (not title) to avoid duplicates
   const existingMap = new Map();
   existingMetadata.forEach(item => {
-    existingMap.set(item.title, item);
+    // Use videoUrl to extract project path as unique identifier
+    if (item.videoUrl) {
+      const urlPath = item.videoUrl.replace('https://videoassets.smaffan.com/', '');
+      // Extract the full path (directory) without the filename
+      const pathParts = urlPath.split('/');
+      pathParts.pop(); // Remove the filename
+      const projectPath = pathParts.join('/');
+      
+      // Only keep items that still exist locally
+      if (localProjectPaths.has(projectPath)) {
+        // Update the title and description to match current folder structure
+        const cleanName = projectPath.split('/').pop();
+        const updatedTitle = toTitleCase(cleanName);
+        
+        if (item.title !== updatedTitle) {
+          console.log(`✓ Updating title: "${item.title}" → "${updatedTitle}"`);
+          item.title = updatedTitle;
+          item.description = `Video project: ${updatedTitle}`;
+        }
+        
+        existingMap.set(projectPath, item);
+      } else {
+        console.log(`⊘ Removing orphaned metadata: ${item.title} (${projectPath})`);
+      }
+    }
   });
   
-  // Update or add new work items
+  // Update or add new work items using project path as key
   workItems.forEach(item => {
-    existingMap.set(item.title, item);
+    if (item.videoUrl) {
+      const urlPath = item.videoUrl.replace('https://videoassets.smaffan.com/', '');
+      const pathParts = urlPath.split('/');
+      pathParts.pop(); // Remove the filename
+      const projectPath = pathParts.join('/');
+      existingMap.set(projectPath, item);
+    }
   });
   
   // Convert back to array and sort by timestamp (newest first)
@@ -341,6 +399,55 @@ async function buildSharedMetadata(workItems) {
 }
 
 /**
+ * Clean up orphaned files in R2 that are no longer present locally
+ */
+async function cleanupOrphanedFiles(localProjects) {
+  console.log('\n=== Cleaning up orphaned files ===');
+  
+  // Get all files from local projects
+  const localFiles = new Set();
+  localProjects.forEach(project => {
+    const files = fs.readdirSync(project.path);
+    files.forEach(file => {
+      if (!file.startsWith('.')) {
+        localFiles.add(`${project.name}/${file}`);
+      }
+    });
+  });
+  
+  // Get all objects from R2
+  const r2Objects = await listR2Objects();
+  const orphanedFiles = [];
+  
+  r2Objects.forEach(obj => {
+    const key = obj.Key;
+    // Skip metadata.json and files not in our project structure
+    if (key === 'metadata.json' || !key.includes('/')) {
+      return;
+    }
+    
+    // Check if this file still exists locally
+    if (!localFiles.has(key)) {
+      orphanedFiles.push(key);
+    }
+  });
+  
+  if (orphanedFiles.length === 0) {
+    console.log('✓ No orphaned files to clean up');
+    return;
+  }
+  
+  console.log(`Found ${orphanedFiles.length} orphaned file(s) to delete:`);
+  orphanedFiles.forEach(file => console.log(`  - ${file}`));
+  
+  // Delete orphaned files (batch delete for efficiency)
+  const deletePromises = orphanedFiles.map(key => deleteFile(key));
+  await Promise.all(deletePromises);
+  
+  console.log('✓ Cleanup complete');
+}
+
+/**
  * Upload shared metadata to R2
  */
 async function uploadSharedMetadata(metadata) {
@@ -354,7 +461,7 @@ async function uploadSharedMetadata(metadata) {
 
   try {
     await s3Client.send(command);
-    console.log(`\n✓ Uploaded shared metadata.json with ${metadata.length} items`);
+    console.log(`✓ Uploaded shared metadata.json with ${metadata.length} items`);
     return true;
   } catch (error) {
     console.error(`✗ Failed to upload metadata.json:`, error.message);
@@ -394,8 +501,11 @@ async function sync() {
     return;
   }
   
-  // Build and upload shared metadata
-  const sharedMetadata = await buildSharedMetadata(workItems);
+  // Clean up orphaned files
+  await cleanupOrphanedFiles(projects);
+  
+  // Build and upload shared metadata (pass projects for validation)
+  const sharedMetadata = await buildSharedMetadata(workItems, projects);
   await uploadSharedMetadata(sharedMetadata);
   
   console.log('\n=== Sync Complete ===');
