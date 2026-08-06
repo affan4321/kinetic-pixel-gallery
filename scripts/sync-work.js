@@ -2,7 +2,7 @@
 
 /**
  * Cloudflare R2 Work Sync Script for Kinetic Pixel Gallery
- * This script syncs work projects from the work-projects folder to Cloudflare R2
+ * This script syncs video projects from the Muhammad_Affan/video-projects folder to Cloudflare R2
  * It shares the same bucket as the Muhammad_Affan video projects
  * Usage: node scripts/sync-work.js
  * 
@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
 
 // Configuration
 const BUCKET_NAME = process.env.CLOUDFLARE_R2_BUCKET || 'muhammad-affan-video-editing';
-const WORK_PROJECTS_DIR = path.join(__dirname, '../work-projects');
+const WORK_PROJECTS_DIR = path.join('/Users/apple/Data/-----------GITHUB Repositories-----------/Muhammad_Affan/video-projects');
 const METADATA_FILE = 'metadata.json';
 const SHARED_METADATA_KEY = 'metadata.json'; // Shared metadata for both projects
 
@@ -117,6 +117,9 @@ function getContentType(filename) {
     '.png': 'image/png',
     '.webp': 'image/webp',
     '.json': 'application/json',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.mov': 'video/quicktime',
   };
   return contentTypes[ext] || 'application/octet-stream';
 }
@@ -147,18 +150,54 @@ function getLocalWorkProjects() {
   for (const item of items) {
     if (item.startsWith('.')) continue;
     
-    const projectPath = path.join(WORK_PROJECTS_DIR, item);
-    const stats = fs.statSync(projectPath);
+    const itemPath = path.join(WORK_PROJECTS_DIR, item);
+    const stats = fs.statSync(itemPath);
     
     if (stats.isDirectory()) {
-      projects.push({
-        name: item,
-        path: projectPath,
+      // Check if this directory contains subdirectories with actual projects
+      const subItems = fs.readdirSync(itemPath);
+      const hasSubProjects = subItems.some(subItem => {
+        const subPath = path.join(itemPath, subItem);
+        const subStats = fs.statSync(subPath);
+        return subStats.isDirectory() && (fs.existsSync(path.join(subPath, 'metadata.json')) || hasVideoFile(subPath));
       });
+      
+      if (hasSubProjects) {
+        // Process each subdirectory that contains metadata.json or video files
+        for (const subItem of subItems) {
+          if (subItem.startsWith('.')) continue;
+          
+          const subPath = path.join(itemPath, subItem);
+          const subStats = fs.statSync(subPath);
+          
+          if (subStats.isDirectory() && (fs.existsSync(path.join(subPath, 'metadata.json')) || hasVideoFile(subPath))) {
+            projects.push({
+              name: `${item}/${subItem}`,
+              path: subPath,
+            });
+          }
+        }
+      } else {
+        // Treat as a single project if it has metadata.json directly or video files
+        if (fs.existsSync(path.join(itemPath, 'metadata.json')) || hasVideoFile(itemPath)) {
+          projects.push({
+            name: item,
+            path: itemPath,
+          });
+        }
+      }
     }
   }
 
   return projects;
+}
+
+/**
+ * Check if directory contains video files
+ */
+function hasVideoFile(dirPath) {
+  const files = fs.readdirSync(dirPath);
+  return files.some(f => f.endsWith('.mp4') || f.endsWith('.webm') || f.endsWith('.mov'));
 }
 
 /**
@@ -177,12 +216,13 @@ function loadProjectMetadata(projectPath, projectName) {
   }
   
   // Generate default metadata if not exists
+  const cleanName = projectName.split('/').pop(); // Get the last part of the path
   return {
-    title: toTitleCase(projectName),
-    tag: 'Portfolio',
+    title: toTitleCase(cleanName),
+    tag: 'Video',
     year: new Date().getFullYear().toString(),
     span: 'lg:col-span-6',
-    description: `Work project: ${toTitleCase(projectName)}`,
+    description: `Video project: ${toTitleCase(cleanName)}`,
   };
 }
 
@@ -200,26 +240,52 @@ async function processProject(project) {
     f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png') || f.endsWith('.webp')
   );
   
-  if (!thumbnailFile) {
-    console.log(`  ⚠️  No thumbnail found for ${project.name}, skipping...`);
+  // Find video file
+  const videoFile = files.find(f => 
+    f.endsWith('.mp4') || f.endsWith('.webm') || f.endsWith('.mov')
+  );
+  
+  if (!videoFile) {
+    console.log(`  ⚠️  No video found for ${project.name}, skipping...`);
     return null;
   }
   
-  // Upload thumbnail with project folder prefix
-  const thumbnailKey = `work/${project.name}/${thumbnailFile}`;
-  const thumbnailPath = path.join(project.path, thumbnailFile);
+  // Upload video file
+  const videoKey = `${project.name}/${videoFile}`;
+  const videoPath = path.join(project.path, videoFile);
+  const videoUploadSuccess = await uploadFile(videoKey, videoPath, getContentType(videoFile));
   
-  const uploadSuccess = await uploadFile(thumbnailKey, thumbnailPath, getContentType(thumbnailFile));
-  
-  if (!uploadSuccess) {
+  if (!videoUploadSuccess) {
     return null;
   }
+  
+  const videoUrl = `https://videoassets.smaffan.com/${videoKey}`;
+  
+  // Upload thumbnail if exists, otherwise use a placeholder
+  let thumbnailUrl = null;
+  if (thumbnailFile) {
+    const thumbnailKey = `${project.name}/${thumbnailFile}`;
+    const thumbnailPath = path.join(project.path, thumbnailFile);
+    const uploadSuccess = await uploadFile(thumbnailKey, thumbnailPath, getContentType(thumbnailFile));
+    
+    if (uploadSuccess) {
+      thumbnailUrl = `https://videoassets.smaffan.com/${thumbnailKey}`;
+    }
+  } else {
+    console.log(`  ⚠️  No thumbnail found for ${project.name}, using video as thumbnail`);
+    thumbnailUrl = videoUrl; // Fallback to video URL
+  }
+  
+  // Get file modification time for sorting
+  const videoStats = fs.statSync(videoPath);
+  const timestamp = videoStats.mtime.getTime();
   
   // Generate work item for shared metadata
   const workItem = {
     ...metadata,
-    thumbnail: `https://videoassets.smaffan.com/${thumbnailKey}`,
-    projectType: 'work', // Distinguish from video projects
+    thumbnail: thumbnailUrl,
+    videoUrl: videoUrl,
+    timestamp: timestamp,
   };
   
   console.log(`  ✓ Processed ${project.name}`);
@@ -241,11 +307,35 @@ async function buildSharedMetadata(workItems) {
     console.log('⚠️  Could not fetch existing metadata, starting fresh');
   }
   
-  // Separate video projects from work projects
-  const videoProjects = existingMetadata.filter(item => !item.projectType || item.projectType !== 'work');
+  // Create a map of existing items by title to avoid duplicates
+  const existingMap = new Map();
+  existingMetadata.forEach(item => {
+    existingMap.set(item.title, item);
+  });
   
-  // Combine video projects with new work projects
-  const combinedMetadata = [...videoProjects, ...workItems];
+  // Update or add new work items
+  workItems.forEach(item => {
+    existingMap.set(item.title, item);
+  });
+  
+  // Convert back to array and sort by timestamp (newest first)
+  const combinedMetadata = Array.from(existingMap.values());
+  
+  // Sort by timestamp descending (newest first)
+  // If no timestamp, use year as fallback, then oldest timestamp
+  combinedMetadata.sort((a, b) => {
+    // If both have timestamps, use them
+    if (a.timestamp && b.timestamp) {
+      return b.timestamp - a.timestamp;
+    }
+    // If only one has timestamp, prioritize it
+    if (a.timestamp && !b.timestamp) return -1;
+    if (!a.timestamp && b.timestamp) return 1;
+    // If neither has timestamp, sort by year descending
+    const yearA = parseInt(a.year || '2024');
+    const yearB = parseInt(b.year || '2024');
+    return yearB - yearA;
+  });
   
   return combinedMetadata;
 }
@@ -276,18 +366,19 @@ async function uploadSharedMetadata(metadata) {
  * Main sync function
  */
 async function sync() {
-  console.log('=== Kinetic Pixel Gallery Work Sync ===\n');
+  console.log('=== Kinetic Pixel Gallery Video Sync ===\n');
+  console.log('Syncing from Muhammad_Affan/video-projects directory\n');
   
   const projects = getLocalWorkProjects();
   
   if (projects.length === 0) {
-    console.log('No local work projects found to sync.');
+    console.log('No local video projects found to sync.');
     console.log('The frontend will continue to fetch from the existing R2 bucket.');
-    console.log('To add new work, create folders in work-projects/ with thumbnail.jpg and metadata.json');
+    console.log('To add new videos, create folders in Muhammad_Affan/video-projects/ with thumbnail, video.mp4 and metadata.json');
     return;
   }
   
-  console.log(`Found ${projects.length} work project(s) to process.\n`);
+  console.log(`Found ${projects.length} video project(s) to process.\n`);
   
   // Process all work projects
   const workItems = [];
@@ -299,7 +390,7 @@ async function sync() {
   }
   
   if (workItems.length === 0) {
-    console.log('\nNo work items were successfully processed.');
+    console.log('\nNo video items were successfully processed.');
     return;
   }
   
@@ -308,7 +399,7 @@ async function sync() {
   await uploadSharedMetadata(sharedMetadata);
   
   console.log('\n=== Sync Complete ===');
-  console.log(`Work projects are now available at: https://videoassets.smaffan.com/metadata.json`);
+  console.log(`Video projects are now available at: https://videoassets.smaffan.com/metadata.json`);
 }
 
 // Run sync
