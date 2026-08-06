@@ -76,6 +76,8 @@ const MARQUEE = [
 function Index() {
   const [scrolled, setScrolled] = useState(false);
   const [work, setWork] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -94,11 +96,12 @@ function Index() {
         // Show both work projects and video projects (exclude work-only filter)
         // Transform to match expected format
         const transformedWork = data.map(item => ({
-          src: item.thumbnail,
+          src: item.thumbnail ? item.thumbnail.replace(/ /g, '%20') : null,
           title: item.title,
           tag: item.tag || item.category || 'Project',
           year: item.year || new Date().getFullYear().toString(),
           span: item.span || 'lg:col-span-6',
+          videoUrl: item.videoUrl ? item.videoUrl.replace(/ /g, '%20') : null,
         }));
         setWork(transformedWork);
       } catch (error) {
@@ -247,16 +250,34 @@ function Index() {
           ) : (
             work.map((w, i) => (
               <Reveal key={w.title} delay={(i % 2) * 120} className={w.span}>
-                <article className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card">
-                  <div className="aspect-video overflow-hidden">
+                <article 
+                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card cursor-pointer"
+                  onClick={() => setSelectedVideo(w.videoUrl)}
+                  onMouseEnter={() => setHoveredVideo(w.videoUrl)}
+                  onMouseLeave={() => setHoveredVideo(null)}
+                >
+                  <div className="aspect-video overflow-hidden relative">
+                    {/* Thumbnail Image */}
                     <img
                       src={w.src}
                       alt={`${w.title} — ${w.tag} still`}
                       loading="lazy"
                       width={1280}
                       height={720}
-                      className="h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
+                      className={`h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0 ${hoveredVideo === w.videoUrl ? 'opacity-0' : 'opacity-100'}`}
                     />
+                    {/* Video Preview */}
+                  {w.videoUrl && (
+                    <video
+                      src={w.videoUrl}
+                      muted
+                      loop
+                      playsInline
+                      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${hoveredVideo === w.videoUrl ? 'opacity-100' : 'opacity-0'}`}
+                      onMouseEnter={(e) => e.currentTarget.play()}
+                      onMouseLeave={(e) => e.currentTarget.pause()}
+                    />
+                  )}
                   </div>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
@@ -274,6 +295,34 @@ function Index() {
             ))
           )}
         </div>
+        
+        {selectedVideo && (
+          <div 
+            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+            onClick={() => setSelectedVideo(null)}
+          >
+            <div 
+              className="relative w-full h-full max-w-[95vw] max-h-[95vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute top-4 right-4 z-10 text-white/80 hover:text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+              <video
+                src={selectedVideo}
+                controls
+                autoPlay
+                className="w-full h-full object-contain max-h-[95vh]"
+              />
+            </div>
+          </div>
+        )}
       </section>
 
       {/* CRAFT */}
