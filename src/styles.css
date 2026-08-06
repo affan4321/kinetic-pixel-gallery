@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-display: "Bebas Neue", sans-serif;
+  --font-sans: "Barlow", sans-serif;
+  --color-bronze: var(--bronze);
+  --color-bronze-glow: var(--bronze-glow);
+  --color-sand: var(--sand);
+}
+
 /*
  * Design system definition.
  *
@@ -62,26 +70,36 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --radius: 0.25rem;
+  --background: oklch(0.14 0.006 60);
+  --foreground: oklch(0.93 0.012 80);
+  --card: oklch(0.18 0.008 65);
+  --card-foreground: oklch(0.93 0.012 80);
+  --popover: oklch(0.18 0.008 65);
+  --popover-foreground: oklch(0.93 0.012 80);
+  --primary: oklch(0.72 0.088 68);
+  --primary-foreground: oklch(0.14 0.006 60);
+  --secondary: oklch(0.24 0.012 68);
+  --secondary-foreground: oklch(0.93 0.012 80);
+  --muted: oklch(0.22 0.01 68);
+  --muted-foreground: oklch(0.66 0.022 75);
+  --accent: oklch(0.62 0.1 62);
+  --accent-foreground: oklch(0.14 0.006 60);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.28 0.014 68);
+  --input: oklch(0.28 0.014 68);
+  --ring: oklch(0.72 0.088 68);
+  --bronze: oklch(0.72 0.088 68);
+  --bronze-glow: oklch(0.84 0.07 78);
+  --sand: oklch(0.88 0.035 82);
+  --gradient-bronze: linear-gradient(120deg, var(--bronze), var(--bronze-glow));
+  --glow-spot: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in oklab, var(--sand) 22%, transparent),
+    transparent 62%
+  );
+  --shadow-cine: 0 30px 80px -30px color-mix(in oklab, var(--bronze) 45%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -140,5 +158,83 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background: var(--bronze);
+    color: var(--primary-foreground);
+  }
+}
+
+@utility text-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.88;
+}
+
+@utility bronze-text {
+  background: var(--gradient-bronze);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.055;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@utility reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  &[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
   }
 }
