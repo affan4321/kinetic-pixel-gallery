@@ -2,12 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Reveal } from "@/components/Reveal";
 import portrait from "@/assets/portrait.png.asset.json";
-import work1 from "@/assets/work-1.jpg";
-import work2 from "@/assets/work-2.jpg";
-import work3 from "@/assets/work-3.jpg";
-import work4 from "@/assets/work-4.jpg";
-import work5 from "@/assets/work-5.jpg";
-import work6 from "@/assets/work-6.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,15 +32,6 @@ const NAV = [
   { label: "Contact", href: "#contact" },
 ];
 
-const WORK = [
-  { src: work1, title: "Nightfall", tag: "Short Film", year: "2025", span: "lg:col-span-7" },
-  { src: work2, title: "Aurum", tag: "Product Spot", year: "2025", span: "lg:col-span-5" },
-  { src: work3, title: "Kinetic", tag: "Music Video", year: "2024", span: "lg:col-span-5" },
-  { src: work4, title: "The Maker", tag: "Documentary", year: "2024", span: "lg:col-span-7" },
-  { src: work5, title: "Overland", tag: "Travel Film", year: "2024", span: "lg:col-span-7" },
-  { src: work6, title: "Tailored", tag: "Fashion Film", year: "2023", span: "lg:col-span-5" },
-];
-
 const CRAFT = [
   {
     n: "01",
@@ -71,16 +56,18 @@ const CRAFT = [
 ];
 
 const STATS = [
-  { k: "340+", v: "Films delivered" },
-  { k: "9 yrs", v: "Behind the timeline" },
+  { k: "3+", v: "Films built" },
+  { k: "3+ months", v: "Behind the timeline" },
   { k: "48 hr", v: "Typical first cut" },
-  { k: "27", v: "Brands served" },
+  { k: "none - looking to surprise you", v: "Brands served" },
 ];
 
 const MARQUEE = [
   "Premiere Pro",
-  "DaVinci Resolve",
   "After Effects",
+  "CapCut",
+  "Illustrator",
+  "Photoshop",
   "Color Grading",
   "Sound Design",
   "Motion Graphics",
@@ -88,12 +75,40 @@ const MARQUEE = [
 
 function Index() {
   const [scrolled, setScrolled] = useState(false);
+  const [work, setWork] = useState([]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchWork = async () => {
+      try {
+        const response = await fetch('https://videoassets.smaffan.com/metadata.json');
+        if (!response.ok) throw new Error('Failed to fetch work metadata');
+        const data = await response.json();
+        
+        // Show both work projects and video projects (exclude work-only filter)
+        // Transform to match expected format
+        const transformedWork = data.map(item => ({
+          src: item.thumbnail,
+          title: item.title,
+          tag: item.tag || item.category || 'Project',
+          year: item.year || new Date().getFullYear().toString(),
+          span: item.span || 'lg:col-span-6',
+        }));
+        setWork(transformedWork);
+      } catch (error) {
+        console.error('Error fetching work:', error);
+        // Fallback to empty array
+        setWork([]);
+      }
+    };
+
+    fetchWork();
   }, []);
 
   return (
@@ -108,7 +123,7 @@ function Index() {
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 sm:px-8">
           <a href="#top" className="flex min-w-0 items-center gap-3">
             <span className="h-2 w-2 shrink-0 rounded-full bg-primary [animation:pulse-glow_2.6s_ease-in-out_infinite]" />
-            <span className="truncate text-display text-2xl tracking-[0.18em]">CUT&nbsp;/&nbsp;GRADE</span>
+            <span className="truncate text-display text-2xl tracking-[0.18em]">Muhammad&nbsp;Affan</span>
           </a>
           <nav className="flex items-center gap-6">
             <ul className="hidden items-center gap-7 text-xs uppercase tracking-[0.22em] text-muted-foreground md:flex">
@@ -219,39 +234,45 @@ function Index() {
           <div className="mb-14 flex flex-wrap items-end justify-between gap-4 border-b border-border/60 pb-6">
             <h2 className="text-display text-[clamp(2.6rem,7vw,5.5rem)]">SELECTED WORK</h2>
             <span className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              2023 — 2025
+              2026 — 2026
             </span>
           </div>
         </Reveal>
 
         <div className="grid gap-6 lg:grid-cols-12">
-          {WORK.map((w, i) => (
-            <Reveal key={w.title} delay={(i % 2) * 120} className={w.span}>
-              <article className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card">
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={w.src}
-                    alt={`${w.title} — ${w.tag} still`}
-                    loading="lazy"
-                    width={1280}
-                    height={720}
-                    className="h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
-                  />
-                </div>
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
-                  <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-[0.28em] text-primary">{w.tag}</p>
-                    <h3 className="truncate text-display text-3xl">{w.title}</h3>
+          {work.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">Loading work...</p>
+            </div>
+          ) : (
+            work.map((w, i) => (
+              <Reveal key={w.title} delay={(i % 2) * 120} className={w.span}>
+                <article className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card">
+                  <div className="aspect-video overflow-hidden">
+                    <img
+                      src={w.src}
+                      alt={`${w.title} — ${w.tag} still`}
+                      loading="lazy"
+                      width={1280}
+                      height={720}
+                      className="h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
+                    />
                   </div>
-                  <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    {w.year}
-                  </span>
-                </div>
-                <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-primary transition-transform duration-500 group-hover:scale-x-100" />
-              </article>
-            </Reveal>
-          ))}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{w.tag}</p>
+                      <h3 className="truncate text-display text-3xl">{w.title}</h3>
+                    </div>
+                    <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      {w.year}
+                    </span>
+                  </div>
+                  <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-primary transition-transform duration-500 group-hover:scale-x-100" />
+                </article>
+              </Reveal>
+            ))
+          )}
         </div>
       </section>
 
@@ -306,7 +327,7 @@ function Index() {
             </Reveal>
             <Reveal delay={200}>
               <p className="mt-8 max-w-xl leading-relaxed text-muted-foreground">
-                Nine years in the timeline taught me that pacing beats plugins. I work closely with
+                The timeline taught me that pacing beats plugins. I work closely with
                 directors and founders, protect the intent of the footage, and shape it into
                 something that lands — whether it runs 15 seconds on a feed or 15 minutes in a
                 festival room.
@@ -347,30 +368,30 @@ function Index() {
           </Reveal>
           <Reveal delay={240}>
             <a
-              href="mailto:hello@example.com"
+              href="mailto:affan4321@gmail.com"
               className="mt-10 inline-block border-b border-primary/50 pb-2 text-lg tracking-[0.12em] text-primary transition-colors hover:border-primary hover:text-foreground sm:text-2xl"
             >
-              hello@example.com
+              affan4321@gmail.com
             </a>
           </Reveal>
           <Reveal delay={340}>
             <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-              <a className="transition-colors hover:text-primary" href="#work">
+              <a className="transition-colors hover:text-primary" href="https://www.instagram.com/smaffan92">
                 Instagram
               </a>
-              <a className="transition-colors hover:text-primary" href="#work">
-                Vimeo
+              <a className="transition-colors hover:text-primary" href="https://github.com/affan4321">
+                Github
               </a>
-              <a className="transition-colors hover:text-primary" href="#work">
+              <a className="transition-colors hover:text-primary" href="https://www.youtube.com/@Techomiame">
                 YouTube
               </a>
-              <a className="transition-colors hover:text-primary" href="#work">
+              <a className="transition-colors hover:text-primary" href="https://www.linkedin.com/in/sheikhmuhammadaffan/">
                 LinkedIn
               </a>
             </div>
           </Reveal>
           <p className="mt-14 text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
-            © {new Date().getFullYear()} — Cut / Grade
+            © {new Date().getFullYear()} — Muhammad Affan
           </p>
         </div>
       </footer>

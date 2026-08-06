@@ -22,3 +22,49 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Deployment
+
+### Vercel Deployment
+
+This project is configured for Vercel deployment:
+
+1. **Push to GitHub**: Ensure your code is pushed to a GitHub repository
+2. **Import to Vercel**: 
+   - Go to [vercel.com](https://vercel.com)
+   - Click "Add New Project"
+   - Import your GitHub repository
+3. **Configure Settings**:
+   - Build Command: `npm run build`
+   - Output Directory: `.output`
+   - Install Command: `npm install`
+4. **Environment Variables** (optional - only needed for sync-work script):
+   - `CLOUDFLARE_R2_ACCOUNT_ID`
+   - `CLOUDFLARE_R2_ACCESS_KEY_ID`
+   - `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
+   - `CLOUDFLARE_R2_BUCKET`
+5. **Deploy**: Click "Deploy"
+
+The frontend fetches work data from `https://videoassets.smaffan.com/metadata.json`, so no environment variables are required for the site to function.
+
+### Adding New Work
+
+To add new portfolio items:
+
+1. Create a folder in `work-projects/` (e.g., `work-projects/my-project/`)
+2. Add files:
+   - `thumbnail.jpg` (or .png/.webp)
+   - `metadata.json` with:
+     ```json
+     {
+       "title": "Project Title",
+       "tag": "Category",
+       "year": "2025",
+       "span": "lg:col-span-6",
+       "description": "Project description"
+     }
+     ```
+3. Run sync script: `npm run sync-work`
+4. Commit and push changes
+
+The sync script uploads your work to the shared Cloudflare R2 bucket, making it available on both this site and your Muhammad_Affan portfolio.
