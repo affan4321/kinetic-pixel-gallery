@@ -126,7 +126,10 @@ function Index() {
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 sm:px-8">
           <a href="#top" className="flex min-w-0 items-center gap-3">
             <span className="h-2 w-2 shrink-0 rounded-full bg-primary [animation:pulse-glow_2.6s_ease-in-out_infinite]" />
-            <span className="truncate text-display text-2xl tracking-[0.18em]">Muhammad&nbsp;Affan</span>
+            <span className="flex flex-col truncate text-display text-sm md:text-2xl tracking-[0.18em] md:flex-row">
+              <span>Muhammad</span>
+              <span className="md:ml-1">Affan</span>
+            </span>
           </a>
           <nav className="flex items-center gap-6">
             <ul className="hidden items-center gap-7 text-xs uppercase tracking-[0.22em] text-muted-foreground md:flex">
