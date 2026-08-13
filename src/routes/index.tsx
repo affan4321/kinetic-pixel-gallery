@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
 import { Reveal } from "@/components/Reveal";
+import { getDriveWork } from "@/lib/drive.functions";
 import portrait from "@/assets/portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -75,43 +78,31 @@ const MARQUEE = [
 
 function Index() {
   const [scrolled, setScrolled] = useState(false);
-  const [work, setWork] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("All");
+
+  const fetchWork = useServerFn(getDriveWork);
+  const { data: work = [], isLoading } = useQuery({
+    queryKey: ["drive-work"],
+    queryFn: () => fetchWork(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(work.map((w) => w.tag)))],
+    [work],
+  );
+  const visible = useMemo(
+    () => (filter === "All" ? work : work.filter((w) => w.tag === filter)),
+    [work, filter],
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const fetchWork = async () => {
-      try {
-        const response = await fetch('https://videoassets.smaffan.com/metadata.json');
-        if (!response.ok) throw new Error('Failed to fetch work metadata');
-        const data = await response.json();
-        
-        // Show both work projects and video projects (exclude work-only filter)
-        // Transform to match expected format
-        const transformedWork = data.map(item => ({
-          src: item.thumbnail ? item.thumbnail.replace(/ /g, '%20') : null,
-          title: item.title,
-          tag: item.tag || item.category || 'Project',
-          year: item.year || new Date().getFullYear().toString(),
-          span: item.span || 'lg:col-span-6',
-          videoUrl: item.videoUrl ? item.videoUrl.replace(/ /g, '%20') : null,
-        }));
-        setWork(transformedWork);
-      } catch (error) {
-        console.error('Error fetching work:', error);
-        // Fallback to empty array
-        setWork([]);
-      }
-    };
-
-    fetchWork();
   }, []);
 
   return (
