@@ -226,15 +226,6 @@ html.custom-cursor *::after {
   cursor: none !important;
 }
 
-@keyframes marquee-legacy {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 @keyframes pulse-glow {
   0%,
   100% {

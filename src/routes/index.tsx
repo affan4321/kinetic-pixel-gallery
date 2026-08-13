@@ -322,7 +322,7 @@ function Index() {
         
         {selectedVideo && (
           <div 
-            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-xl"
             onClick={() => setSelectedVideo(null)}
           >
             <div 
