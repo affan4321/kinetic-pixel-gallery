@@ -236,42 +236,70 @@ function Index() {
           </div>
         </Reveal>
 
+        {categories.length > 1 && (
+          <div className="mb-10 flex flex-wrap gap-3">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setFilter(c)}
+                data-cursor="Filter"
+                className={`rounded-full border px-5 py-2 text-xs uppercase tracking-[0.2em] transition-colors duration-300 ${
+                  filter === c
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border/60 text-muted-foreground hover:border-primary hover:text-primary"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-12">
-          {work.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">Loading work...</p>
+          {isLoading ? (
+            [0, 1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className="lg:col-span-6 aspect-video animate-pulse rounded-sm border border-border/60 bg-card"
+              />
+            ))
+          ) : visible.length === 0 ? (
+            <div className="col-span-full py-12 text-center">
+              <p className="text-muted-foreground">No films to show yet.</p>
             </div>
           ) : (
-            work.map((w, i) => (
-              <Reveal key={w.title} delay={(i % 2) * 120} className={w.span}>
-                <article 
-                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card cursor-pointer"
+            visible.map((w, i) => (
+              <Reveal
+                key={w.id}
+                delay={(i % 2) * 120}
+                className={w.portrait ? "lg:col-span-4" : "lg:col-span-8"}
+              >
+                <article
+                  data-cursor="Play"
+                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card"
                   onClick={() => setSelectedVideo(w.videoUrl)}
-                  onMouseEnter={() => setHoveredVideo(w.videoUrl)}
+                  onMouseEnter={() => setHoveredVideo(w.id)}
                   onMouseLeave={() => setHoveredVideo(null)}
                 >
-                  <div className="aspect-video overflow-hidden relative">
-                    {/* Thumbnail Image */}
-                    <img
-                      src={w.src}
-                      alt={`${w.title} — ${w.tag} still`}
-                      loading="lazy"
-                      width={1280}
-                      height={720}
-                      className={`h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0 ${hoveredVideo === w.videoUrl ? 'opacity-0' : 'opacity-100'}`}
-                    />
-                    {/* Video Preview */}
-                  {w.videoUrl && (
+                  <div
+                    className={`relative overflow-hidden ${w.portrait ? "aspect-[3/4]" : "aspect-video"}`}
+                  >
                     <video
                       src={w.videoUrl}
                       muted
                       loop
                       playsInline
-                      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${hoveredVideo === w.videoUrl ? 'opacity-100' : 'opacity-0'}`}
-                      onMouseEnter={(e) => e.currentTarget.play()}
-                      onMouseLeave={(e) => e.currentTarget.pause()}
+                      preload="metadata"
+                      className="h-full w-full scale-105 object-cover grayscale-[45%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
+                      ref={(el) => {
+                        if (!el) return;
+                        if (hoveredVideo === w.id) void el.play().catch(() => {});
+                        else {
+                          el.pause();
+                          el.currentTime = 0;
+                        }
+                      }}
                     />
-                  )}
                   </div>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
@@ -280,7 +308,9 @@ function Index() {
                       <h3 className="truncate text-display text-3xl">{w.title}</h3>
                     </div>
                     <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      {w.year}
+                      {w.duration
+                        ? `${Math.floor(w.duration / 60)}:${String(w.duration % 60).padStart(2, "0")}`
+                        : w.year}
                     </span>
                   </div>
                   <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-primary transition-transform duration-500 group-hover:scale-x-100" />
