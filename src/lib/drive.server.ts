@@ -60,8 +60,8 @@ async function getAccessToken(): Promise<string> {
     }
     
     accessToken = tokenResponse.token;
-    // Set expiry to 5 minutes before actual expiry to be safe
-    tokenExpiry = Date.now() + (tokenResponse.expiryDate ? tokenResponse.expiryDate - Date.now() - 300000 : 300000);
+    // Set expiry to 55 minutes (default token lifetime is 1 hour)
+    tokenExpiry = Date.now() + 55 * 60 * 1000;
     
     return accessToken;
   } catch (error) {
