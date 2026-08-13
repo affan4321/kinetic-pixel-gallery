@@ -255,12 +255,12 @@ function Index() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid grid-flow-dense gap-6 lg:auto-rows-[26rem] lg:grid-cols-12">
           {isLoading ? (
             [0, 1, 2, 3].map((s) => (
               <div
                 key={s}
-                className="lg:col-span-6 aspect-video animate-pulse rounded-sm border border-border/60 bg-card"
+                className="aspect-video animate-pulse rounded-sm border border-border/60 bg-card lg:col-span-6 lg:aspect-auto"
               />
             ))
           ) : visible.length === 0 ? (
@@ -272,7 +272,7 @@ function Index() {
               <Reveal
                 key={w.id}
                 delay={(i % 2) * 120}
-                className={w.portrait ? "lg:col-span-4" : "lg:col-span-8"}
+                className={`h-full ${w.portrait ? "lg:col-span-4" : "lg:col-span-8"}`}
               >
                 <article
                   data-cursor="Play"
@@ -282,10 +282,10 @@ function Index() {
                   onMouseLeave={() => setHoveredVideo(null)}
                 >
                   <div
-                    className={`relative overflow-hidden ${w.portrait ? "aspect-[3/4]" : "aspect-video"}`}
+                    className={`relative h-full overflow-hidden ${w.portrait ? "aspect-[3/4] lg:aspect-auto" : "aspect-video lg:aspect-auto"}`}
                   >
                     <video
-                      src={w.videoUrl}
+                      src={`${w.videoUrl}#t=0.1`}
                       muted
                       loop
                       playsInline
