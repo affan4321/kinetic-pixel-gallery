@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "portfolio-access-505413",
+  "private_key_id": "9b6b6aa9b3bc8b6589ecf65fee0c225fc67f4f7b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDQK2QeR1z+LqdB\nEvBAhOLUPhR0S5Dxk8oJL8qe30kJHtQWSYjAlPiYlo4cqVQwx/gBAauZdGZ15Uts\n2BzyWnLDBqAEtOF3r+epcZ+GYcMGJL1mfCUAUB1/RnbwDr7AtPvlF3kshGjP9JwX\nPpaCQ4OwJEdp6CT0Hmj+WcRqoqESZ+3RV3+mpSd7/rDNUj2Dvf3JnGX5NXsNUFRI\n4cBGq0Go/i/Djq9y56UD3lJmCste406L48fw6iB9ry8QKiFrad+TzgUZ6JrWxJjY\nv4MMLpFf/iQnge87xmAqVnnZcHYGRb9G3boEluPaQBVIoid4qxjL71CtVtx0hrva\ndcMzRObTAgMBAAECggEAUg9Qy7jQ+SgV6YqYJ67apdUFBiUFsZ1TLtTmmEMnzM8Y\nxuJc5KG0752lzrmXRRWG94qbhQYEH+RwG6uDmau7ApM5gDF3kdFHTp3KR1SBZwoT\nmXNFuL5cKmByIUaGvnt5ssDSlRBrKtLftzAGb7pCjqx2dFK9Qng8ZkunqGuMeC7G\nh+TawKhXviZVdjaB4l8H+KM4qK74FKhvMBSzd6zpnfXzYaB7zy15b+vk2HCEn1Rm\nG7ko8eRpdF6NKLG1uZsnb4mK60vQx9GLTo2xJaop+U1L2XucbGWVtFIknipVfSbZ\nzbUsXCb7i9Nv3VrRXnQN4dpxCCfq58co+JmUY1ndUQKBgQD2SdQeWVXVVoDoOwWt\nEjJAbQXr8EflBbUSWs6NHjiAi/q+PPq9Jc8X698Vyra9P1XwAUoDzmcweNh1LHiC\nfQT9wmr/FQ+wFG55IonkwHrARcUfYe/YKtJ7i8BD+MGZobUwe0KZRbwlQxzW9RO7\nTY6MOQoNC1XyacajPKk7+KMzowKBgQDYYMTtnddZz7JL3QUaVOi1q6G+2bgfhiMk\n80YDjicfzBqaV06pasvHO3LvLDet8h5B+hJmQlswLu7hLVXoIKjrIDCvX81EmY6F\nYSYMiEjLtk9sAiBZEk9ootln0nQxGNmPPZykstTIOVtczKFlgHNYfyxI51BuI9cD\nhF8Q6JczEQKBgHVA5uTgATZFLa/iUax5CkWT4grW5VOKqQ8o/kc/CQViHyks3O7q\nLjMkT5wPW3qzyZUu9+7h+Eyia+M1HdZ58MNjKQ9yFnrs7z9qix3F6WrajKOJO+e9\nU2IQQaParUkYLKv9MtLH2XAgCH3qRc+Zd/EYQsm9CNkVNMWIXsW3dPNjAoGAWEMY\n8UhaaNM1CocMptIN3tU09DHBTnKb8V2eqKKayPirvVtxxd+/YfSZDIC/8Z96wjTs\nvnPA2KW8YXPpv/dakBagZVkx1RLCNRwMtj39W8NxIEC5yzuR0r/i6NvK86AMVsau\nF+yuqUHkR7Vc/Jdp9aZifRaGE3dhJJkhYjdOPdECgYEAoQoTLqPeI2jvWxIzp56X\nIatTi/by3JMYZZ1Vk26hPpmFdmDCorwrAPP8qrdKuRtomiLGHSPWVU/VlE6M/0zl\nbMMwBJAw6FWOuvocUq/BW9yufFBSQ1i4bxTiGGT9qeuHkbI42AiaphaJJxUMjK1o\ndzvaoJTn7laiySojCjDcmc8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "portfolio-site-video-editing@portfolio-access-505413.iam.gserviceaccount.com",
+  "client_id": "105654543031365452919",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/portfolio-site-video-editing%40portfolio-access-505413.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
