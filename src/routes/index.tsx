@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
 import { Reveal } from "@/components/Reveal";
+import { getDriveWork } from "@/lib/drive.functions";
 import portrait from "@/assets/portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -75,43 +78,31 @@ const MARQUEE = [
 
 function Index() {
   const [scrolled, setScrolled] = useState(false);
-  const [work, setWork] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("All");
+
+  const fetchWork = useServerFn(getDriveWork);
+  const { data: work = [], isLoading } = useQuery({
+    queryKey: ["drive-work"],
+    queryFn: () => fetchWork(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(work.map((w) => w.tag)))],
+    [work],
+  );
+  const visible = useMemo(
+    () => (filter === "All" ? work : work.filter((w) => w.tag === filter)),
+    [work, filter],
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const fetchWork = async () => {
-      try {
-        const response = await fetch('https://videoassets.smaffan.com/metadata.json');
-        if (!response.ok) throw new Error('Failed to fetch work metadata');
-        const data = await response.json();
-        
-        // Show both work projects and video projects (exclude work-only filter)
-        // Transform to match expected format
-        const transformedWork = data.map(item => ({
-          src: item.thumbnail ? item.thumbnail.replace(/ /g, '%20') : null,
-          title: item.title,
-          tag: item.tag || item.category || 'Project',
-          year: item.year || new Date().getFullYear().toString(),
-          span: item.span || 'lg:col-span-6',
-          videoUrl: item.videoUrl ? item.videoUrl.replace(/ /g, '%20') : null,
-        }));
-        setWork(transformedWork);
-      } catch (error) {
-        console.error('Error fetching work:', error);
-        // Fallback to empty array
-        setWork([]);
-      }
-    };
-
-    fetchWork();
   }, []);
 
   return (
@@ -245,42 +236,70 @@ function Index() {
           </div>
         </Reveal>
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          {work.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">Loading work...</p>
+        {categories.length > 1 && (
+          <div className="mb-10 flex flex-wrap gap-3">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setFilter(c)}
+                data-cursor="Filter"
+                className={`rounded-full border px-5 py-2 text-xs uppercase tracking-[0.2em] transition-colors duration-300 ${
+                  filter === c
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border/60 text-muted-foreground hover:border-primary hover:text-primary"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-flow-dense gap-6 lg:auto-rows-[26rem] lg:grid-cols-12">
+          {isLoading ? (
+            [0, 1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className="aspect-video animate-pulse rounded-sm border border-border/60 bg-card lg:col-span-6 lg:aspect-auto"
+              />
+            ))
+          ) : visible.length === 0 ? (
+            <div className="col-span-full py-12 text-center">
+              <p className="text-muted-foreground">No films to show yet.</p>
             </div>
           ) : (
-            work.map((w, i) => (
-              <Reveal key={w.title} delay={(i % 2) * 120} className={w.span}>
-                <article 
-                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card cursor-pointer"
+            visible.map((w, i) => (
+              <Reveal
+                key={w.id}
+                delay={(i % 2) * 120}
+                className={`h-full ${w.portrait ? "lg:col-span-4" : "lg:col-span-8"}`}
+              >
+                <article
+                  data-cursor="Play"
+                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card"
                   onClick={() => setSelectedVideo(w.videoUrl)}
-                  onMouseEnter={() => setHoveredVideo(w.videoUrl)}
+                  onMouseEnter={() => setHoveredVideo(w.id)}
                   onMouseLeave={() => setHoveredVideo(null)}
                 >
-                  <div className="aspect-video overflow-hidden relative">
-                    {/* Thumbnail Image */}
-                    <img
-                      src={w.src}
-                      alt={`${w.title} — ${w.tag} still`}
-                      loading="lazy"
-                      width={1280}
-                      height={720}
-                      className={`h-full w-full scale-105 object-cover grayscale-[35%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0 ${hoveredVideo === w.videoUrl ? 'opacity-0' : 'opacity-100'}`}
-                    />
-                    {/* Video Preview */}
-                  {w.videoUrl && (
+                  <div
+                    className={`relative h-full overflow-hidden ${w.portrait ? "aspect-[3/4] lg:aspect-auto" : "aspect-video lg:aspect-auto"}`}
+                  >
                     <video
-                      src={w.videoUrl}
+                      src={`${w.videoUrl}#t=0.1`}
                       muted
                       loop
                       playsInline
-                      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${hoveredVideo === w.videoUrl ? 'opacity-100' : 'opacity-0'}`}
-                      onMouseEnter={(e) => e.currentTarget.play()}
-                      onMouseLeave={(e) => e.currentTarget.pause()}
+                      preload="metadata"
+                      className="h-full w-full scale-105 object-cover grayscale-[45%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
+                      ref={(el) => {
+                        if (!el) return;
+                        if (hoveredVideo === w.id) void el.play().catch(() => {});
+                        else {
+                          el.pause();
+                          el.currentTime = 0;
+                        }
+                      }}
                     />
-                  )}
                   </div>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
@@ -289,7 +308,9 @@ function Index() {
                       <h3 className="truncate text-display text-3xl">{w.title}</h3>
                     </div>
                     <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      {w.year}
+                      {w.duration
+                        ? `${Math.floor(w.duration / 60)}:${String(w.duration % 60).padStart(2, "0")}`
+                        : w.year}
                     </span>
                   </div>
                   <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-primary transition-transform duration-500 group-hover:scale-x-100" />
@@ -301,7 +322,7 @@ function Index() {
         
         {selectedVideo && (
           <div 
-            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-xl"
             onClick={() => setSelectedVideo(null)}
           >
             <div 
@@ -310,7 +331,8 @@ function Index() {
             >
               <button
                 onClick={() => setSelectedVideo(null)}
-                className="absolute top-4 right-4 z-10 text-white/80 hover:text-white transition-colors"
+                data-cursor="Close"
+                className="absolute right-4 top-4 z-10 text-muted-foreground transition-colors hover:text-primary"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>

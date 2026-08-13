@@ -219,6 +219,13 @@
   }
 }
 
+html.custom-cursor,
+html.custom-cursor *,
+html.custom-cursor *::before,
+html.custom-cursor *::after {
+  cursor: none !important;
+}
+
 @keyframes pulse-glow {
   0%,
   100% {
