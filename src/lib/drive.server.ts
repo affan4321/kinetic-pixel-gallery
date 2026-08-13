@@ -21,21 +21,19 @@ type DriveFile = {
   videoMediaMetadata?: { width?: number; height?: number; durationMillis?: string };
 };
 
-export function driveHeaders() {
+export function getApiKey(): string {
   const apiKey = process.env["GOOGLE_DRIVE_API_KEY"];
   if (!apiKey) throw new Error("Google Drive API key is not configured");
-  return {
-    "key": apiKey,
-  };
+  return apiKey;
 }
 
 async function listChildren(folderIds: string[]): Promise<DriveFile[]> {
   if (folderIds.length === 0) return [];
   const q = `(${folderIds.map((id) => `'${id}' in parents`).join(" or ")}) and trashed=false`;
-  const url = `${DRIVE_API}/files?q=${encodeURIComponent(q)}&pageSize=200&fields=${encodeURIComponent(
+  const url = `${DRIVE_API}/files?key=${encodeURIComponent(getApiKey())}&q=${encodeURIComponent(q)}&pageSize=200&fields=${encodeURIComponent(
     "files(id,name,mimeType,modifiedTime,parents,videoMediaMetadata)",
   )}`;
-  const res = await fetch(url, { headers: driveHeaders() });
+  const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text();
     console.error(`Drive list failed [${res.status}]: ${body}`);
@@ -118,15 +116,19 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
 export async function streamDriveFile(fileId: string, request: Request): Promise<Response> {
   const range = request.headers.get("range");
-  const headers = driveHeaders();
   
   // For Google Drive API, we need to use alt=media to get the file content
-  const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
+  const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?key=${encodeURIComponent(getApiKey())}&alt=media&acknowledgeAbuse=true`;
   
-  const upstream = await fetch(url, {
+  const options: RequestInit = {
     method: request.method === "HEAD" ? "GET" : request.method,
-    headers: range ? { ...headers, Range: range } : headers,
-  });
+  };
+  
+  if (range) {
+    options.headers = { Range: range };
+  }
+  
+  const upstream = await fetch(url, options);
 
   if (!upstream.ok && upstream.status !== 206) {
     const body = await upstream.text();
