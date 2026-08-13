@@ -1,6 +1,6 @@
-import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 
+const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const ROOT_FOLDER_ID = "1h6mGR_WOLZwqC-UrJqVrlkB6HmBlebfF";
 const CACHE_MS = 5 * 60 * 1000;
 
@@ -23,10 +23,14 @@ type DriveFile = {
   videoMediaMetadata?: { width?: number; height?: number; durationMillis?: string };
 };
 
-let driveClient: any = null;
+let accessToken: string | null = null;
+let tokenExpiry: number = 0;
 
-function getDriveClient() {
-  if (driveClient) return driveClient;
+async function getAccessToken(): Promise<string> {
+  // Return cached token if still valid
+  if (accessToken && Date.now() < tokenExpiry) {
+    return accessToken;
+  }
   
   const credentials = process.env["GOOGLE_SERVICE_ACCOUNT_CREDENTIALS"];
   if (!credentials) {
@@ -45,24 +49,40 @@ function getDriveClient() {
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
   
-  driveClient = google.drive({ version: 'v3', auth });
-  return driveClient;
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  
+  accessToken = tokenResponse.token;
+  // Set expiry to 5 minutes before actual expiry to be safe
+  tokenExpiry = Date.now() + (tokenResponse.expiryDate ? tokenResponse.expiryDate - Date.now() - 300000 : 300000);
+  
+  return accessToken;
 }
 
 async function listChildren(folderIds: string[]): Promise<DriveFile[]> {
   if (folderIds.length === 0) return [];
   
-  const drive = getDriveClient();
+  const accessToken = await getAccessToken();
   const q = `(${folderIds.map((id) => `'${id}' in parents`).join(" or ")}) and trashed=false`;
+  const url = `${DRIVE_API}/files?q=${encodeURIComponent(q)}&pageSize=200&fields=${encodeURIComponent(
+    "files(id,name,mimeType,modifiedTime,parents,videoMediaMetadata)",
+  )}`;
   
   try {
-    const response = await drive.files.list({
-      q: q,
-      pageSize: 200,
-      fields: 'files(id,name,mimeType,modifiedTime,parents,videoMediaMetadata)',
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
     
-    return response.data.files as DriveFile[] || [];
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`Drive list failed [${res.status}]: ${body}`);
+      throw new Error(`Drive list failed [${res.status}]: ${body}`);
+    }
+    
+    const data = (await res.json()) as { files?: DriveFile[] };
+    return data.files ?? [];
   } catch (error) {
     console.error(`Drive list failed:`, error);
     throw new Error(`Drive list failed: ${error}`);
@@ -142,41 +162,49 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
 export async function streamDriveFile(fileId: string, request: Request): Promise<Response> {
   const range = request.headers.get("range");
-  const drive = getDriveClient();
+  const accessToken = await getAccessToken();
+  
+  // For Google Drive API, we need to use alt=media to get the file content
+  const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
+  
+  const options: RequestInit = {
+    method: request.method === "HEAD" ? "GET" : request.method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  };
+  
+  if (range) {
+    options.headers = {
+      ...options.headers,
+      Range: range,
+    };
+  }
   
   try {
-    const response = await drive.files.get({
-      fileId: fileId,
-      alt: 'media',
-      acknowledgeAbuse: true,
-    }, { responseType: 'stream' });
+    const upstream = await fetch(url, options);
 
-    const responseHeaders = new Headers();
-    responseHeaders.set("content-type", "video/mp4");
-    responseHeaders.set("accept-ranges", "bytes");
-    responseHeaders.set("cache-control", "public, max-age=3600");
-    
-    if (range) {
-      // Handle range requests for video streaming
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : response.data.size - 1;
-      const chunksize = (end - start) + 1;
-      
-      responseHeaders.set("content-range", `bytes ${start}-${end}/${response.data.size}`);
-      responseHeaders.set("content-length", chunksize.toString());
-      
-      return new Response(response.data, {
-        status: 206,
-        headers: responseHeaders,
-      });
-    } else {
-      responseHeaders.set("content-length", response.data.size?.toString() || "0");
-      return new Response(response.data, {
-        status: 200,
-        headers: responseHeaders,
+    if (!upstream.ok && upstream.status !== 206) {
+      const body = await upstream.text();
+      console.error(`Drive media failed [${upstream.status}]: ${body}`);
+      return new Response(`Drive media failed [${upstream.status}]: ${body}`, {
+        status: upstream.status,
       });
     }
+
+    const responseHeaders = new Headers();
+    for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "etag"]) {
+      const v = upstream.headers.get(h);
+      if (v) responseHeaders.set(h, v);
+    }
+    if (!responseHeaders.has("content-type")) responseHeaders.set("content-type", "video/mp4");
+    if (!responseHeaders.has("accept-ranges")) responseHeaders.set("accept-ranges", "bytes");
+    responseHeaders.set("cache-control", "public, max-age=3600");
+
+    return new Response(request.method === "HEAD" ? null : upstream.body, {
+      status: upstream.status,
+      headers: responseHeaders,
+    });
   } catch (error) {
     console.error(`Drive media failed:`, error);
     return new Response(`Drive media failed: ${error}`, {
