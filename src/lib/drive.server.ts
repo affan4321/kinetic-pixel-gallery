@@ -55,6 +55,10 @@ async function getAccessToken(): Promise<string> {
     const client = await auth.getClient();
     const tokenResponse = await client.getAccessToken();
     
+    if (!tokenResponse.token) {
+      throw new Error("Failed to obtain access token from Google Auth");
+    }
+    
     accessToken = tokenResponse.token;
     // Set expiry to 5 minutes before actual expiry to be safe
     tokenExpiry = Date.now() + (tokenResponse.expiryDate ? tokenResponse.expiryDate - Date.now() - 300000 : 300000);
