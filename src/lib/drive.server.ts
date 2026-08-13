@@ -34,6 +34,7 @@ async function getAccessToken(): Promise<string> {
   
   const credentials = process.env["GOOGLE_SERVICE_ACCOUNT_CREDENTIALS"];
   if (!credentials) {
+    console.error("Google Service Account credentials are not configured");
     throw new Error("Google Service Account credentials are not configured");
   }
   
@@ -41,22 +42,28 @@ async function getAccessToken(): Promise<string> {
   try {
     credentialsObj = JSON.parse(credentials);
   } catch (e) {
+    console.error("Invalid Google Service Account credentials JSON:", e);
     throw new Error("Invalid Google Service Account credentials JSON");
   }
   
-  const auth = new GoogleAuth({
-    credentials: credentialsObj,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-  });
-  
-  const client = await auth.getClient();
-  const tokenResponse = await client.getAccessToken();
-  
-  accessToken = tokenResponse.token;
-  // Set expiry to 5 minutes before actual expiry to be safe
-  tokenExpiry = Date.now() + (tokenResponse.expiryDate ? tokenResponse.expiryDate - Date.now() - 300000 : 300000);
-  
-  return accessToken;
+  try {
+    const auth = new GoogleAuth({
+      credentials: credentialsObj,
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    });
+    
+    const client = await auth.getClient();
+    const tokenResponse = await client.getAccessToken();
+    
+    accessToken = tokenResponse.token;
+    // Set expiry to 5 minutes before actual expiry to be safe
+    tokenExpiry = Date.now() + (tokenResponse.expiryDate ? tokenResponse.expiryDate - Date.now() - 300000 : 300000);
+    
+    return accessToken;
+  } catch (error) {
+    console.error("Failed to get access token:", error);
+    throw new Error(`Failed to get access token: ${error}`);
+  }
 }
 
 async function listChildren(folderIds: string[]): Promise<DriveFile[]> {
@@ -161,28 +168,33 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 }
 
 export async function streamDriveFile(fileId: string, request: Request): Promise<Response> {
-  const range = request.headers.get("range");
-  const accessToken = await getAccessToken();
-  
-  // For Google Drive API, we need to use alt=media to get the file content
-  const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
-  
-  const options: RequestInit = {
-    method: request.method === "HEAD" ? "GET" : request.method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  };
-  
-  if (range) {
-    options.headers = {
-      ...options.headers,
-      Range: range,
-    };
-  }
-  
   try {
+    const range = request.headers.get("range");
+    console.log(`Streaming file ${fileId}, range: ${range}`);
+    
+    const accessToken = await getAccessToken();
+    console.log(`Got access token successfully`);
+    
+    // For Google Drive API, we need to use alt=media to get the file content
+    const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
+    
+    const options: RequestInit = {
+      method: request.method === "HEAD" ? "GET" : request.method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    };
+    
+    if (range) {
+      options.headers = {
+        ...options.headers,
+        Range: range,
+      };
+    }
+    
+    console.log(`Fetching from Drive API: ${url}`);
     const upstream = await fetch(url, options);
+    console.log(`Drive API response status: ${upstream.status}`);
 
     if (!upstream.ok && upstream.status !== 206) {
       const body = await upstream.text();
@@ -206,7 +218,7 @@ export async function streamDriveFile(fileId: string, request: Request): Promise
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error(`Drive media failed:`, error);
+    console.error(`Drive media failed for file ${fileId}:`, error);
     return new Response(`Drive media failed: ${error}`, {
       status: 500,
     });
