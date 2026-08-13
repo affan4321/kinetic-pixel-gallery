@@ -1,4 +1,4 @@
-const GATEWAY = "https://connector-gateway.lovable.dev/google_drive/drive/v3";
+const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const ROOT_FOLDER_ID = "1h6mGR_WOLZwqC-UrJqVrlkB6HmBlebfF";
 const CACHE_MS = 5 * 60 * 1000;
 
@@ -22,19 +22,17 @@ type DriveFile = {
 };
 
 export function driveHeaders() {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const connectionKey = process.env["GOOGLE_DRIVE_API_KEY"];
-  if (!lovableKey || !connectionKey) throw new Error("Google Drive connection is not configured");
+  const apiKey = process.env["GOOGLE_DRIVE_API_KEY"];
+  if (!apiKey) throw new Error("Google Drive API key is not configured");
   return {
-    Authorization: `Bearer ${lovableKey}`,
-    "X-Connection-Api-Key": connectionKey,
+    "key": apiKey,
   };
 }
 
 async function listChildren(folderIds: string[]): Promise<DriveFile[]> {
   if (folderIds.length === 0) return [];
   const q = `(${folderIds.map((id) => `'${id}' in parents`).join(" or ")}) and trashed=false`;
-  const url = `${GATEWAY}/files?q=${encodeURIComponent(q)}&pageSize=200&fields=${encodeURIComponent(
+  const url = `${DRIVE_API}/files?q=${encodeURIComponent(q)}&pageSize=200&fields=${encodeURIComponent(
     "files(id,name,mimeType,modifiedTime,parents,videoMediaMetadata)",
   )}`;
   const res = await fetch(url, { headers: driveHeaders() });
@@ -120,13 +118,15 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
 export async function streamDriveFile(fileId: string, request: Request): Promise<Response> {
   const range = request.headers.get("range");
-  const upstream = await fetch(
-    `${GATEWAY}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`,
-    {
-      method: request.method === "HEAD" ? "GET" : request.method,
-      headers: range ? { ...driveHeaders(), Range: range } : driveHeaders(),
-    },
-  );
+  const headers = driveHeaders();
+  
+  // For Google Drive API, we need to use alt=media to get the file content
+  const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
+  
+  const upstream = await fetch(url, {
+    method: request.method === "HEAD" ? "GET" : request.method,
+    headers: range ? { ...headers, Range: range } : headers,
+  });
 
   if (!upstream.ok && upstream.status !== 206) {
     const body = await upstream.text();
@@ -136,17 +136,17 @@ export async function streamDriveFile(fileId: string, request: Request): Promise
     });
   }
 
-  const headers = new Headers();
+  const responseHeaders = new Headers();
   for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "etag"]) {
     const v = upstream.headers.get(h);
-    if (v) headers.set(h, v);
+    if (v) responseHeaders.set(h, v);
   }
-  if (!headers.has("content-type")) headers.set("content-type", "video/mp4");
-  if (!headers.has("accept-ranges")) headers.set("accept-ranges", "bytes");
-  headers.set("cache-control", "public, max-age=3600");
+  if (!responseHeaders.has("content-type")) responseHeaders.set("content-type", "video/mp4");
+  if (!responseHeaders.has("accept-ranges")) responseHeaders.set("accept-ranges", "bytes");
+  responseHeaders.set("cache-control", "public, max-age=3600");
 
   return new Response(request.method === "HEAD" ? null : upstream.body, {
     status: upstream.status,
-    headers,
+    headers: responseHeaders,
   });
 }
