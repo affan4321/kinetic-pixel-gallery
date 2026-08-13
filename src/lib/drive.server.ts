@@ -106,6 +106,14 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
       } satisfies DriveWork;
     });
 
+  const seen = new Map<string, number>();
+  const numerals = ["", " II", " III", " IV", " V", " VI"];
+  for (const item of data) {
+    const n = seen.get(item.title) ?? 0;
+    seen.set(item.title, n + 1);
+    item.title += numerals[n] ?? ` ${n + 1}`;
+  }
+
   cache = { at: Date.now(), data };
   return data;
 }
