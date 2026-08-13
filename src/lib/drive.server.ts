@@ -47,17 +47,33 @@ async function listChildren(folderIds: string[]): Promise<DriveFile[]> {
   return data.files ?? [];
 }
 
-const NOISE =
-  /\b(final|finals|affan|edit|edited|export|output|render|copy|v\d+|ver\d+|sample|extended)\b/gi;
+const NOISE = new Set([
+  "final",
+  "finals",
+  "affan",
+  "edit",
+  "edited",
+  "export",
+  "output",
+  "render",
+  "copy",
+  "sample",
+  "extended",
+  "v",
+  "ver",
+  "version",
+  "main",
+  "new",
+  "old",
+]);
 
 function prettyTitle(name: string) {
   const base = name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ");
-  const cleaned = base
-    .replace(NOISE, " ")
-    .replace(/\b\d{1,3}\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const text = cleaned.length > 2 ? cleaned : base.replace(/\s+/g, " ").trim();
+  const tokens = base
+    .split(/\s+/)
+    .map((t) => t.replace(/\d+$/, "").trim())
+    .filter((t) => t.length > 0 && !NOISE.has(t.toLowerCase()));
+  const text = tokens.length ? tokens.join(" ") : base.trim() || "Untitled";
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
