@@ -101,7 +101,7 @@ function Index() {
 
   // Initialize filter to first category when data loads
   useEffect(() => {
-    if (work.length > 0 && categories.length > 1 && filter === "All") {
+    if (work.length > 0 && categories.length > 1) {
       setFilter(categories[0] || "All");
     }
   }, [work, categories, filter]);
