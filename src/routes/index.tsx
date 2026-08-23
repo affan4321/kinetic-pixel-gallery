@@ -341,6 +341,7 @@ function Index() {
                       preload="metadata"
                       className="h-full w-full scale-105 object-cover grayscale-[45%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
                       ref={(el) => {
+                        videoRefs.current[w.id] = el;
                         if (!el) return;
                         if (hoveredVideo === w.id) void el.play().catch(() => {});
                         else {
