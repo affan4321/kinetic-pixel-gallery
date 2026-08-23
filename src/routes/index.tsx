@@ -261,7 +261,7 @@ function Index() {
             [0, 1, 2, 3].map((s) => (
               <div
                 key={s}
-                className="h-[24rem] animate-pulse rounded-sm border border-border/60 bg-card"
+                className="h-96 animate-pulse rounded-sm border border-border/60 bg-card"
               />
             ))
           ) : visible.length === 0 ? (
@@ -277,9 +277,8 @@ function Index() {
               >
                 <article
                   data-cursor="Play"
-                  className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card"
+                  className="group relative h-96 overflow-hidden rounded-sm border border-border/60 bg-card"
                   style={{
-                    height: '24rem',
                     transform: `perspective(1000px) rotateX(${mousePositions[w.id]?.x || 0}deg) rotateY(${mousePositions[w.id]?.y || 0}deg)`,
                     transformStyle: 'preserve-3d',
                     transition: 'transform 0.1s ease-out'
