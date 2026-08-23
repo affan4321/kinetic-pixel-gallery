@@ -489,10 +489,10 @@ function Index() {
           </Reveal>
           <Reveal delay={240}>
             <a
-              href="mailto:affan4321@gmail.com"
+              href="mailto:smaffanedits@gmail.com"
               className="mt-10 inline-block border-b border-primary/50 pb-2 text-lg tracking-[0.12em] text-primary transition-colors hover:border-primary hover:text-foreground sm:text-2xl"
             >
-              affan4321@gmail.com
+              smaffanedits@gmail.com
             </a>
           </Reveal>
           <Reveal delay={340}>
