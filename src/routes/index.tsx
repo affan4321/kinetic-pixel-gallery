@@ -91,20 +91,13 @@ function Index() {
   });
 
   const categories = useMemo(
-    () => [...Array.from(new Set(work.map((w) => w.tag))), "All"],
+    () => ["All", ...Array.from(new Set(work.map((w) => w.tag)))],
     [work],
   );
   const visible = useMemo(
     () => (filter === "All" ? work : work.filter((w) => w.tag === filter)),
     [work, filter],
   );
-
-  // Initialize filter to first category when data loads
-  useEffect(() => {
-    if (work.length > 0 && categories.length > 1) {
-      setFilter(categories[0] || "All");
-    }
-  }, [work, categories, filter]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -268,7 +261,7 @@ function Index() {
             [0, 1, 2, 3].map((s) => (
               <div
                 key={s}
-                className="h-96 animate-pulse rounded-sm border border-border/60 bg-card"
+                className="h-96 animate-pulse rounded-lg border border-bronze/30 bg-card"
               />
             ))
           ) : visible.length === 0 ? (
@@ -284,11 +277,11 @@ function Index() {
               >
                 <article
                   data-cursor="Play"
-                  className="group relative h-96 overflow-hidden rounded-sm border border-border/60 bg-card"
+                  className="group relative h-96 overflow-hidden rounded-lg border border-bronze/30 bg-card shadow-[0_0_0_1px_rgba(0,0,0,0)] transition-all duration-500 hover:border-bronze/70 hover:shadow-[0_0_30px_-8px_rgba(193,140,90,0.25)]"
                   style={{
                     transform: `perspective(1000px) rotateX(${mousePositions[w.id]?.x || 0}deg) rotateY(${mousePositions[w.id]?.y || 0}deg)`,
                     transformStyle: 'preserve-3d',
-                    transition: 'transform 0.1s ease-out'
+                    transition: 'transform 0.1s ease-out, border-color 0.5s ease, box-shadow 0.5s ease'
                   }}
                   onClick={() => setSelectedVideo(w.videoUrl)}
                   onMouseEnter={() => setHoveredVideo(w.id)}
