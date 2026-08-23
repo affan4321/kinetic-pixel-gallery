@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Reveal } from "@/components/Reveal";
 import { getDriveWork } from "@/lib/drive.functions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import portrait from "@/assets/portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -82,6 +83,8 @@ function Index() {
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
   const [mousePositions, setMousePositions] = useState<Record<string, { x: number; y: number }>>({});
+  const isMobile = useIsMobile();
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
   const fetchWork = useServerFn(getDriveWork);
   const { data: work = [], isLoading } = useQuery({
@@ -283,7 +286,35 @@ function Index() {
                     transformStyle: 'preserve-3d',
                     transition: 'transform 0.1s ease-out, border-color 0.5s ease, box-shadow 0.5s ease'
                   }}
-                  onClick={() => setSelectedVideo(w.videoUrl)}
+                  onClick={() => {
+                    if (isMobile) {
+                      const video = videoRefs.current[w.id];
+                      if (!video) return;
+                      video.muted = false;
+                      video.controls = true;
+                      const cleanup = () => {
+                        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+                          video.pause();
+                          video.currentTime = 0;
+                          video.muted = true;
+                          video.controls = false;
+                          video.removeEventListener("fullscreenchange", cleanup);
+                          video.removeEventListener("webkitfullscreenchange", cleanup);
+                        }
+                      };
+                      video.addEventListener("fullscreenchange", cleanup);
+                      video.addEventListener("webkitfullscreenchange", cleanup);
+                      void video.play().then(() => {
+                        if (video.requestFullscreen) {
+                          void video.requestFullscreen().catch(() => {});
+                        } else if ((video as any).webkitEnterFullscreen) {
+                          (video as any).webkitEnterFullscreen();
+                        }
+                      }).catch(() => {});
+                      return;
+                    }
+                    setSelectedVideo(w.videoUrl);
+                  }}
                   onMouseEnter={() => setHoveredVideo(w.id)}
                   onMouseLeave={() => {
                     setHoveredVideo(null);
@@ -310,6 +341,7 @@ function Index() {
                       preload="metadata"
                       className="h-full w-full scale-105 object-cover grayscale-[45%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
                       ref={(el) => {
+                        videoRefs.current[w.id] = el;
                         if (!el) return;
                         if (hoveredVideo === w.id) void el.play().catch(() => {});
                         else {
