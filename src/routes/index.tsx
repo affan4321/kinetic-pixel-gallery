@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Reveal } from "@/components/Reveal";
 import { getDriveWork } from "@/lib/drive.functions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import portrait from "@/assets/portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
