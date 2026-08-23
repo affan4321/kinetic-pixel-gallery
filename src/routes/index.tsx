@@ -83,6 +83,8 @@ function Index() {
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
   const [mousePositions, setMousePositions] = useState<Record<string, { x: number; y: number }>>({});
+  const isMobile = useIsMobile();
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
   const fetchWork = useServerFn(getDriveWork);
   const { data: work = [], isLoading } = useQuery({
