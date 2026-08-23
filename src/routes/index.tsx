@@ -81,6 +81,7 @@ function Index() {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
+  const [mousePositions, setMousePositions] = useState<Record<string, { x: number; y: number }>>({});
 
   const fetchWork = useServerFn(getDriveWork);
   const { data: work = [], isLoading } = useQuery({
@@ -255,12 +256,12 @@ function Index() {
           </div>
         )}
 
-        <div className="grid grid-flow-dense gap-6 lg:auto-rows-[26rem] lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {isLoading ? (
             [0, 1, 2, 3].map((s) => (
               <div
                 key={s}
-                className="aspect-video animate-pulse rounded-sm border border-border/60 bg-card lg:col-span-6 lg:aspect-auto"
+                className="h-[24rem] animate-pulse rounded-sm border border-border/60 bg-card"
               />
             ))
           ) : visible.length === 0 ? (
@@ -272,18 +273,36 @@ function Index() {
               <Reveal
                 key={w.id}
                 delay={(i % 2) * 120}
-                className={`h-full ${w.portrait ? "lg:col-span-4" : "lg:col-span-8"}`}
+                className="h-full"
               >
                 <article
                   data-cursor="Play"
                   className="group relative h-full overflow-hidden rounded-sm border border-border/60 bg-card"
+                  style={{
+                    height: '24rem',
+                    transform: `perspective(1000px) rotateX(${mousePositions[w.id]?.x || 0}deg) rotateY(${mousePositions[w.id]?.y || 0}deg)`,
+                    transformStyle: 'preserve-3d',
+                    transition: 'transform 0.1s ease-out'
+                  }}
                   onClick={() => setSelectedVideo(w.videoUrl)}
                   onMouseEnter={() => setHoveredVideo(w.id)}
-                  onMouseLeave={() => setHoveredVideo(null)}
+                  onMouseLeave={() => {
+                    setHoveredVideo(null);
+                    setMousePositions(prev => ({ ...prev, [w.id]: { x: 0, y: 0 } }));
+                  }}
+                  onMouseMove={(e) => {
+                    const card = e.currentTarget;
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const rotateX = ((y - centerY) / centerY) * -5;
+                    const rotateY = ((x - centerX) / centerX) * 5;
+                    setMousePositions(prev => ({ ...prev, [w.id]: { x: rotateX, y: rotateY } }));
+                  }}
                 >
-                  <div
-                    className={`relative h-full overflow-hidden ${w.portrait ? "aspect-[3/4] lg:aspect-auto" : "aspect-video lg:aspect-auto"}`}
-                  >
+                  <div className="relative h-full overflow-hidden">
                     <video
                       src={`${w.videoUrl}#t=0.1`}
                       muted
