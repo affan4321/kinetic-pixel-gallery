@@ -91,20 +91,13 @@ function Index() {
   });
 
   const categories = useMemo(
-    () => [...Array.from(new Set(work.map((w) => w.tag))), "All"],
+    () => ["All", ...Array.from(new Set(work.map((w) => w.tag)))],
     [work],
   );
   const visible = useMemo(
     () => (filter === "All" ? work : work.filter((w) => w.tag === filter)),
     [work, filter],
   );
-
-  // Initialize filter to first category when data loads
-  useEffect(() => {
-    if (work.length > 0 && categories.length > 1) {
-      setFilter(categories[0] || "All");
-    }
-  }, [work, categories, filter]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
