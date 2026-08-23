@@ -286,7 +286,35 @@ function Index() {
                     transformStyle: 'preserve-3d',
                     transition: 'transform 0.1s ease-out, border-color 0.5s ease, box-shadow 0.5s ease'
                   }}
-                  onClick={() => setSelectedVideo(w.videoUrl)}
+                  onClick={() => {
+                    if (isMobile) {
+                      const video = videoRefs.current[w.id];
+                      if (!video) return;
+                      video.muted = false;
+                      video.controls = true;
+                      const cleanup = () => {
+                        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+                          video.pause();
+                          video.currentTime = 0;
+                          video.muted = true;
+                          video.controls = false;
+                          video.removeEventListener("fullscreenchange", cleanup);
+                          video.removeEventListener("webkitfullscreenchange", cleanup);
+                        }
+                      };
+                      video.addEventListener("fullscreenchange", cleanup);
+                      video.addEventListener("webkitfullscreenchange", cleanup);
+                      void video.play().then(() => {
+                        if (video.requestFullscreen) {
+                          void video.requestFullscreen().catch(() => {});
+                        } else if ((video as any).webkitEnterFullscreen) {
+                          (video as any).webkitEnterFullscreen();
+                        }
+                      }).catch(() => {});
+                      return;
+                    }
+                    setSelectedVideo(w.videoUrl);
+                  }}
                   onMouseEnter={() => setHoveredVideo(w.id)}
                   onMouseLeave={() => {
                     setHoveredVideo(null);
