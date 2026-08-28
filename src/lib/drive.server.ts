@@ -155,7 +155,7 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
         year: (f.modifiedTime ?? "").slice(0, 4) || String(new Date().getFullYear()),
         duration: Math.round(Number(meta.durationMillis ?? 0) / 1000),
         portrait: height > width,
-        videoUrl: `/api/public/media/${f.id}`,
+        videoUrl: `https://drive.google.com/uc?export=download&id=${f.id}`,
       } satisfies DriveWork;
     });
 
