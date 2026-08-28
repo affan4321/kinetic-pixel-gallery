@@ -142,6 +142,11 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
   const files = [...top, ...nested].filter((f) => f.mimeType.startsWith("video/"));
 
+  const apiKey = process.env["GOOGLE_API_KEY"];
+  if (!apiKey) {
+    console.warn("GOOGLE_API_KEY not configured, videos may not play");
+  }
+
   const data = files
     .sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""))
     .map((f) => {
@@ -155,7 +160,9 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
         year: (f.modifiedTime ?? "").slice(0, 4) || String(new Date().getFullYear()),
         duration: Math.round(Number(meta.durationMillis ?? 0) / 1000),
         portrait: height > width,
-        videoUrl: `https://drive.google.com/uc?export=download&id=${f.id}`,
+        videoUrl: apiKey 
+          ? `https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`
+          : `/api/public/media/${f.id}`,
       } satisfies DriveWork;
     });
 
@@ -215,7 +222,7 @@ export async function streamDriveFile(fileId: string, request: Request): Promise
     }
     if (!responseHeaders.has("content-type")) responseHeaders.set("content-type", "video/mp4");
     if (!responseHeaders.has("accept-ranges")) responseHeaders.set("accept-ranges", "bytes");
-    responseHeaders.set("cache-control", "public, max-age=3600");
+    responseHeaders.set("cache-control", "public, max-age=31536000, immutable");
 
     return new Response(request.method === "HEAD" ? null : upstream.body, {
       status: upstream.status,
