@@ -142,9 +142,11 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
   const files = [...top, ...nested].filter((f) => f.mimeType.startsWith("video/"));
 
-  const apiKey = process.env["GOOGLE_API_KEY"];
+  const apiKey = process.env["GOOGLE_DRIVE_API_KEY"];
   if (!apiKey) {
-    console.warn("GOOGLE_API_KEY not configured, videos may not play");
+    throw new Error(
+      "GOOGLE_DRIVE_API_KEY is not configured. Videos are served directly from Google Drive and there is no proxy fallback — set this env var (and share the Drive files as 'Anyone with the link') rather than routing video traffic through this server.",
+    );
   }
 
   const data = files
@@ -160,9 +162,7 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
         year: (f.modifiedTime ?? "").slice(0, 4) || String(new Date().getFullYear()),
         duration: Math.round(Number(meta.durationMillis ?? 0) / 1000),
         portrait: height > width,
-        videoUrl: apiKey 
-          ? `https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`
-          : `/api/public/media/${f.id}`,
+        videoUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`,
       } satisfies DriveWork;
     });
 
@@ -176,62 +176,4 @@ export async function fetchDriveWork(): Promise<DriveWork[]> {
 
   cache = { at: Date.now(), data };
   return data;
-}
-
-export async function streamDriveFile(fileId: string, request: Request): Promise<Response> {
-  try {
-    const range = request.headers.get("range");
-    console.log(`Streaming file ${fileId}, range: ${range}`);
-    
-    const accessToken = await getAccessToken();
-    console.log(`Got access token successfully`);
-    
-    // For Google Drive API, we need to use alt=media to get the file content
-    const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media&acknowledgeAbuse=true`;
-    
-    const options: RequestInit = {
-      method: request.method === "HEAD" ? "GET" : request.method,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    };
-    
-    if (range) {
-      options.headers = {
-        ...options.headers,
-        Range: range,
-      };
-    }
-    
-    console.log(`Fetching from Drive API: ${url}`);
-    const upstream = await fetch(url, options);
-    console.log(`Drive API response status: ${upstream.status}`);
-
-    if (!upstream.ok && upstream.status !== 206) {
-      const body = await upstream.text();
-      console.error(`Drive media failed [${upstream.status}]: ${body}`);
-      return new Response(`Drive media failed [${upstream.status}]: ${body}`, {
-        status: upstream.status,
-      });
-    }
-
-    const responseHeaders = new Headers();
-    for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "etag"]) {
-      const v = upstream.headers.get(h);
-      if (v) responseHeaders.set(h, v);
-    }
-    if (!responseHeaders.has("content-type")) responseHeaders.set("content-type", "video/mp4");
-    if (!responseHeaders.has("accept-ranges")) responseHeaders.set("accept-ranges", "bytes");
-    responseHeaders.set("cache-control", "public, max-age=31536000, immutable");
-
-    return new Response(request.method === "HEAD" ? null : upstream.body, {
-      status: upstream.status,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    console.error(`Drive media failed for file ${fileId}:`, error);
-    return new Response(`Drive media failed: ${error}`, {
-      status: 500,
-    });
-  }
 }

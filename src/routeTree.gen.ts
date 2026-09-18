@@ -10,43 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicMediaFileIdRouteImport } from './routes/api/public/media/$fileId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicMediaFileIdRoute = ApiPublicMediaFileIdRouteImport.update({
-  id: '/api/public/media/$fileId',
-  path: '/api/public/media/$fileId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/public/media/$fileId': typeof ApiPublicMediaFileIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/public/media/$fileId': typeof ApiPublicMediaFileIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/public/media/$fileId': typeof ApiPublicMediaFileIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/media/$fileId'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/media/$fileId'
-  id: '__root__' | '/' | '/api/public/media/$fileId'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiPublicMediaFileIdRoute: typeof ApiPublicMediaFileIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,19 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/media/$fileId': {
-      id: '/api/public/media/$fileId'
-      path: '/api/public/media/$fileId'
-      fullPath: '/api/public/media/$fileId'
-      preLoaderRoute: typeof ApiPublicMediaFileIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiPublicMediaFileIdRoute: ApiPublicMediaFileIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
