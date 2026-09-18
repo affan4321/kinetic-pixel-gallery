@@ -60,10 +60,10 @@ const CRAFT = [
 ];
 
 const STATS = [
-  { k: "9+", v: "Films built" },
-  { k: "3+ months", v: "Behind the timeline" },
+  { k: "200+", v: "Films built" },
+  { k: "3+ years", v: "Behind the timeline" },
   { k: "24 hr", v: "Typical first cut" },
-  { k: "5+", v: "Brands served" },
+  { k: "20+", v: "Brands served" },
 ];
 
 const MARQUEE = [
