@@ -500,15 +500,11 @@ function Index() {
               <a className="transition-colors hover:text-primary" href="https://www.instagram.com/smaffan92">
                 Instagram
               </a>
-              <a className="transition-colors hover:text-primary" href="https://github.com/affan4321">
-                Github
-              </a>
+              
               <a className="transition-colors hover:text-primary" href="https://www.youtube.com/@Techomiame">
                 YouTube
               </a>
-              <a className="transition-colors hover:text-primary" href="https://www.linkedin.com/in/sheikhmuhammadaffan/">
-                LinkedIn
-              </a>
+              
             </div>
           </Reveal>
           <p className="mt-14 text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
