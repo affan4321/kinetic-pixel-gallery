@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Reveal } from "@/components/Reveal";
 import { getDriveWork } from "@/lib/drive.functions";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { getDriveEmbedUrl, getDriveThumbnailUrl } from "@/lib/drive-urls";
 import portrait from "@/assets/portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -80,11 +80,8 @@ const MARQUEE = [
 function Index() {
   const [scrolled, setScrolled] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
-  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
   const [mousePositions, setMousePositions] = useState<Record<string, { x: number; y: number }>>({});
-  const isMobile = useIsMobile();
-  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
   const fetchWork = useServerFn(getDriveWork);
   const { data: work = [], isLoading } = useQuery({
@@ -286,38 +283,8 @@ function Index() {
                     transformStyle: 'preserve-3d',
                     transition: 'transform 0.1s ease-out, border-color 0.5s ease, box-shadow 0.5s ease'
                   }}
-                  onClick={() => {
-                    if (isMobile) {
-                      const video = videoRefs.current[w.id];
-                      if (!video) return;
-                      video.muted = false;
-                      video.controls = true;
-                      const cleanup = () => {
-                        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-                          video.pause();
-                          video.currentTime = 0;
-                          video.muted = true;
-                          video.controls = false;
-                          video.removeEventListener("fullscreenchange", cleanup);
-                          video.removeEventListener("webkitfullscreenchange", cleanup);
-                        }
-                      };
-                      video.addEventListener("fullscreenchange", cleanup);
-                      video.addEventListener("webkitfullscreenchange", cleanup);
-                      void video.play().then(() => {
-                        if (video.requestFullscreen) {
-                          void video.requestFullscreen().catch(() => {});
-                        } else if ((video as any).webkitEnterFullscreen) {
-                          (video as any).webkitEnterFullscreen();
-                        }
-                      }).catch(() => {});
-                      return;
-                    }
-                    setSelectedVideo(w.videoUrl);
-                  }}
-                  onMouseEnter={() => setHoveredVideo(w.id)}
+                  onClick={() => setSelectedVideo(w.id)}
                   onMouseLeave={() => {
-                    setHoveredVideo(null);
                     setMousePositions(prev => ({ ...prev, [w.id]: { x: 0, y: 0 } }));
                   }}
                   onMouseMove={(e) => {
@@ -333,23 +300,19 @@ function Index() {
                   }}
                 >
                   <div className="relative h-full overflow-hidden">
-                    <video
-                      src={`${w.videoUrl}#t=0.1`}
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
+                    <img
+                      src={getDriveThumbnailUrl(w.id)}
+                      alt={w.title}
+                      loading="lazy"
                       className="h-full w-full scale-105 object-cover grayscale-[45%] transition-all duration-[900ms] ease-out group-hover:scale-100 group-hover:grayscale-0"
-                      ref={(el) => {
-                        videoRefs.current[w.id] = el;
-                        if (!el) return;
-                        if (hoveredVideo === w.id) void el.play().catch(() => {});
-                        else {
-                          el.pause();
-                          el.currentTime = 0;
-                        }
-                      }}
                     />
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-background/80 backdrop-blur-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="ml-1 text-primary">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </span>
+                    </span>
                   </div>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 p-6">
@@ -386,11 +349,12 @@ function Index() {
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-              <video
-                src={selectedVideo}
-                controls
-                autoPlay
-                className="max-h-[85vh] w-auto max-w-[90vw] rounded-sm"
+              <iframe
+                src={getDriveEmbedUrl(selectedVideo)}
+                title="Video player"
+                allow="autoplay; fullscreen"
+                allowFullScreen
+                className="aspect-video h-[70vh] max-h-[85vh] w-[calc(70vh*16/9)] max-w-[90vw] rounded-sm border-0 bg-background"
               />
             </div>
           </div>
